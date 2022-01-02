@@ -5,7 +5,8 @@ Jan 1 2022
 
 this script downloads the user's match data from DynamoDb and sets it up for eventual exploration/modelling
 '''
-import boto3
+import boto3, pandas as pd
+from sklearn.model_selection import train_test_split
 
 
 
@@ -39,13 +40,15 @@ def filter_relevant_data(retrieved_data):
         match_id = numerical_match_data.pop('matchID')
         new_data[match_id] = numerical_match_data
     
-    return new_data
+    return pd.DataFrame(new_data).T #this puts the match id as the index
 
 
 
     
-def split_training_validation_test(filtered_data, training_size, validation_size, test_size):
-    pass
+def split_save_training_test(filtered_data, training_size):
+    X_train, X_test, y_train, y_test = train_test_split(filtered_data, train_size = training_size)
+    pass 
+
 
 
 
