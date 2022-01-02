@@ -26,8 +26,26 @@ def retrieve_all_data_dynamo(session, match_data_table, optional_dynamo_params={
 
 
 def filter_relevant_data(retrieved_data):
-    pass
+    numerical_features = {'suicides', 'damageDone', 'headshots', 'totalXp', 'scorePerMinute', 'score', 'shotsMissed', 'deaths', 'shotsFired', 'percentTimeMoving', 'longestStreak', 'damageTaken', 'utcEndSeconds', 'timePlayed', 'accuracy', 'kdRatio', 'kills', 'utcStartSeconds', 'executions', 'nearmisses', 'medalXp', 'matchXp', 'distanceTraveled', 'duration', 'wallBangs', 'shotsLanded', 'averageSpeedDuringMatch', 'miscXp', 'scoreXp', 'assists'}
 
+    important_string_features = {'matchID', 'gameType', 'mode', 'result', 'map'}
+
+    new_data = {}
+
+    for match in retrieved_data:
+        numerical_match_data = {feature:float(list(match[feature].values())[0]) for feature in numerical_features}
+        match_demographic_data = {feature:list(match[feature].values())[0] for feature in important_string_features}
+        numerical_match_data.update(match_demographic_data)
+        match_id = numerical_match_data.pop('matchID')
+        new_data[match_id] = numerical_match_data
+    
+    return new_data
+
+
+
+    
+def split_training_validation_test(filtered_data, training_size, validation_size, test_size):
+    pass
 
 
 
