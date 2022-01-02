@@ -27,7 +27,7 @@ def retrieve_all_data_dynamo(session, match_data_table, optional_dynamo_params={
 
 
 def filter_relevant_data(retrieved_data):
-    numerical_features = {'suicides', 'damageDone', 'headshots', 'totalXp', 'scorePerMinute', 'score', 'shotsMissed', 'deaths', 'shotsFired', 'percentTimeMoving', 'longestStreak', 'damageTaken', 'utcEndSeconds', 'timePlayed', 'accuracy', 'kdRatio', 'kills', 'utcStartSeconds', 'executions', 'nearmisses', 'medalXp', 'matchXp', 'distanceTraveled', 'duration', 'wallBangs', 'shotsLanded', 'averageSpeedDuringMatch', 'miscXp', 'scoreXp', 'assists'}
+    numerical_features = {'suicides', 'headshots', 'scorePerMinute', 'deaths', 'percentTimeMoving', 'longestStreak', 'timePlayed', 'accuracy', 'kdRatio', 'kills', 'assists'}
 
     important_string_features = {'matchID', 'gameType', 'mode', 'result', 'map'}
 
@@ -41,6 +41,9 @@ def filter_relevant_data(retrieved_data):
         match_id = numerical_match_data.pop('matchID')
         new_data[match_id] = numerical_match_data
     filtered_data = pd.DataFrame(new_data).T #this puts the match id as the index
+    filtered_data.dropna(inplace=True)
+    filtered_data = filtered_data[filtered_data['accuracy'] < 1.0] #get rid of "perfect accuracy" and no movement games
+    filtered_data = filtered_data[filtered_data['percentTimeMoving'] > 0.2]
     match_results = filtered_data.pop("result")
     return filtered_data, match_results
 
