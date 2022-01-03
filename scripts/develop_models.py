@@ -11,6 +11,11 @@ For demonstration, I will tune one model via standard trial and error (with CV) 
 
 #we will do SVM (SVC), Logistic Regression, Decision Tree, Random Forest, and ensembling them all!
 
+import pandas as pd
+
+
+
+
 from sklearn.svm import SVC
 
 from sklearn.linear_model import LogisticRegression
@@ -23,9 +28,9 @@ from sklearn.tree import DecisionTreeClassifier
 
 from sklearn.ensemble import GradientBoostingClassifier ,RandomForestClassifier #think these will work best
 
-from sklearn.model_selection import RandomizedSearchCV #for quicker parameter searching / comparison
+from sklearn.model_selection import cross_validate,RandomizedSearchCV #for quicker parameter searching / comparison
 
-from sklearn.metrics import precision_recall_fscore_support, precision_recall_curve
+from sklearn.metrics import f1_score, precision_recall_fscore_support, precision_recall_curve
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -45,31 +50,26 @@ def initialize_non_grid_search_models():
 
 
 
-
-def initialize_grid_search_models():
-    model_dict = {'SVC':SVC(), 
-    'LogisticRegression':LogisticRegression(),
-    'KNeighborsClassifier':KNeighborsClassifier(),
-    'GaussianNB':GaussianNB(),
-    'DecisionTreeClassifier': DecisionTreeClassifier(), 
-    'GradientBoostingClassifier':GradientBoostingClassifier(),
-    'RandomForestClassifier':RandomForestClassifier()}
-
-    return model_dict   
+def optional_scale(model_type,training_data):
+    pass
 
 
 
-def train_via_cross_validation():
-    pass 
+def train_via_cross_validation(model, training_data):
+    cv_results = cross_validate(model, *training_data, scoring=f1_score) #default 5 fold validation
+    return cv_results
 
 
 def select_best_model_from_cross_validation(cv_results):
-    pass
+    #get the estimator at the index of the max score in test score
+    return cv_results['estimator'][cv_results['test_score'].index(max(cv_results['test_score']))]
 
 
 
 def train_via_grid_search(model,distributions_to_search,iterations_desired, training_data):
-    pass
+    classifier = RandomizedSearchCV(model, distributions_to_search, scoring=f1_score,n_iter=iterations_desired, verbose=2)
+    search_results = classifier.fit(*training_data)
+    return search_results.best_estimator_
 
 
 
@@ -77,13 +77,15 @@ def train_via_grid_search(model,distributions_to_search,iterations_desired, trai
 def score_validate_model(fitted_model, validation_data):
     features, true_labels = validation_data
     predicted_labels = fitted_model.predict(features)
-    precision, recall, f1_score = precision_recall_fscore_support(true_labels, predicted_labels)[:3]
-    return precision, recall, f1_score
+    precision, recall, fscore = precision_recall_fscore_support(true_labels, predicted_labels)[:3]
+    return dict(precision=precision, recall=recall, fscore=fscore)
 
 
 
 def rank_save_best_models(fitted_models, validation_data):
-    pass
+    validation_scores = pd.DataFrame({key:score_validate_model(model,validation_data) for key,model in fitted_models.items()})
+
+    
 
 
 
