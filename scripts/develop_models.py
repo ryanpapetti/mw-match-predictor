@@ -51,7 +51,13 @@ def initialize_non_grid_search_models():
 
 
 def optional_scale(model_type,training_data):
-    pass
+    features,targets = training_data
+    models_need_scaling = ['SVC', 'LogisticRegression', 'KNeighborsClassifier']
+    if model_type in models_need_scaling:
+        feature_scaler = MinMaxScaler()
+        new_features = feature_scaler.fit_transform(features)
+        return new_features, targets
+    return training_data
 
 
 
@@ -70,6 +76,11 @@ def train_via_grid_search(model,distributions_to_search,iterations_desired, trai
     classifier = RandomizedSearchCV(model, distributions_to_search, scoring=f1_score,n_iter=iterations_desired, verbose=2)
     search_results = classifier.fit(*training_data)
     return search_results.best_estimator_
+
+
+
+def train_all_models(training_data):
+    pass
 
 
 
