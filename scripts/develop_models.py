@@ -12,9 +12,9 @@ For demonstration, I will tune one model via standard trial and error (with CV) 
 #we will do SVM (SVC), Logistic Regression, Decision Tree, Random Forest, and ensembling them all!
 
 import pandas as pd
-
-
-
+import os
+import random
+random.seed(420)
 
 from sklearn.svm import SVC
 
@@ -30,14 +30,14 @@ from sklearn.ensemble import GradientBoostingClassifier ,RandomForestClassifier 
 
 from sklearn.model_selection import cross_validate,RandomizedSearchCV #for quicker parameter searching / comparison
 
-from sklearn.metrics import f1_score, precision_recall_fscore_support, precision_recall_curve
+from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 from sklearn.preprocessing import MinMaxScaler
 
 from data_exploration import load_data
 
 
-def initialize_non_grid_search_models():
+def initialize_models():
     model_dict = {'SVC':SVC(), 
     'LogisticRegression':LogisticRegression(),
     'KNeighborsClassifier':KNeighborsClassifier(n_neighbors=7), #
@@ -47,6 +47,12 @@ def initialize_non_grid_search_models():
     'RandomForestClassifier':RandomForestClassifier(max_depth = 5)}
 
     return model_dict
+
+
+
+def onehotencode_features(features):
+    pass
+
 
 
 
@@ -79,8 +85,19 @@ def train_via_grid_search(model,distributions_to_search,iterations_desired, trai
 
 
 
-def train_all_models(training_data):
-    pass
+def train_all_models(model_dict, training_data):
+    fitted_models = {}
+    for model_type, model in model_dict.items():
+        training_data = optional_scale(model_type=model_type, training_data = training_data)
+        #train model with cross validation
+        cross_validation_results = train_via_cross_validation(model,training_data)
+
+        #find best model
+        best_model = select_best_model_from_cross_validation(cross_validation_results)
+
+        #add model to new_dict
+        fitted_models[model_type] = best_model
+    return fitted_models
 
 
 
@@ -96,14 +113,20 @@ def score_validate_model(fitted_model, validation_data):
 def rank_save_best_models(fitted_models, validation_data):
     validation_scores = pd.DataFrame({key:score_validate_model(model,validation_data) for key,model in fitted_models.items()})
 
+    validation_scores.to_pickle('../data/validation_model_scores.pkl')
+
     
 
 
 
 
 def main():
-    training_features, training_labels = load_data('training')
-    validation_features, validation_labels = load_data('validation')
+    model_dict = initialize_models()
+    training_data = load_data('training')
+    validation_data = load_data('validation')
+    # trained_models = train_all_models(model_dict,training_data)
+    # rank_save_best_models(trained_models,validation_data)
+
 
 
 if __name__ == '__main__':
