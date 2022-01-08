@@ -12,7 +12,7 @@ For demonstration, I will tune one model via standard trial and error (with CV) 
 #we will do SVM (SVC), Logistic Regression, Decision Tree, Random Forest, and ensembling them all!
 
 import pandas as pd
-import joblib, random, os, json
+import joblib, random, os
 random.seed(420)
 
 from sklearn.svm import SVC
@@ -29,7 +29,7 @@ from sklearn.ensemble import GradientBoostingClassifier ,RandomForestClassifier 
 
 from sklearn.model_selection import cross_validate,RandomizedSearchCV #for quicker parameter searching / comparison
 
-from sklearn.metrics import f1_score, precision_recall_fscore_support
+from sklearn.metrics import precision_recall_fscore_support
 
 from sklearn.preprocessing import MinMaxScaler
 
