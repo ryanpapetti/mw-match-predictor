@@ -45,11 +45,13 @@ def filter_relevant_data(retrieved_data):
     filtered_data = filtered_data[filtered_data['accuracy'] < 1.0] #get rid of "perfect accuracy" and no movement games
     filtered_data = filtered_data[filtered_data['percentTimeMoving'] > 0.2]
 
-    #must have played map five times
+    #map must be in the hardcore shipment/shoot house options
 
-    # ["mp_shipment","mp_m_speed"]
+    filtered_data = filtered_data[filtered_data['map'].isin(["mp_shipment","mp_m_speed"])]
 
-    # filtered_data = filtered_data[filtered_data['map'].isin()]
+    #get only hardcore modes
+    is_hardcore_mode = lambda mode: mode.endswith('_hc')
+    filtered_data = filtered_data[filtered_data['mode'].apply(is_hardcore_mode)]
 
     match_results = filtered_data.pop("result")
     return filtered_data, match_results
