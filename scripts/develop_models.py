@@ -12,8 +12,7 @@ For demonstration, I will tune one model via standard trial and error (with CV) 
 #we will do SVM (SVC), Logistic Regression, Decision Tree, Random Forest, and ensembling them all!
 
 import pandas as pd
-import os
-import random
+import joblib, random, os, json
 random.seed(420)
 
 from sklearn.svm import SVC
@@ -60,22 +59,63 @@ def onehotencode_features(features):
 
 
 
-def optional_scale(model_type,training_data):
-    features,targets = training_data
+def optional_scale(model_type,scalable_data, prefit_scaler = None):
+    features,targets = scalable_data
     models_need_scaling = ['SVC', 'LogisticRegression', 'KNeighborsClassifier']
     if model_type in models_need_scaling:
-        feature_scaler = MinMaxScaler()
-        new_features = feature_scaler.fit_transform(features)
+        if prefit_scaler is None:
+            scaler_filename = '../data/training/training_data_scaler.sav'
+            if os.path.exists(scaler_filename):
+                feature_scaler = joblib.load('../data/training/training_data_scaler.sav')
+                new_features = feature_scaler.transform(features)
+
+            else:
+                new_features, targets = scale_training_data(scalable_data)
+        
+        else:
+            feature_scaler = prefit_scaler
+            new_features = feature_scaler.transform(features)
+
         return new_features, targets
-    return training_data
+    return scalable_data
 
 
 
-def prepare_data(model_type, training_data):
+
+def scale_training_data(training_data):
+    features, targets = training_data
+    feature_scaler = MinMaxScaler()
+    new_features = feature_scaler.fit_transform(features)
+    #due to needing to also scale the test and validation data APPROPRIATELY, I am going to save the scaler
+    scaler_filename = '../data/training/training_data_scaler.sav'
+
+    joblib.dump(feature_scaler,scaler_filename)
+    return new_features, targets
+
+
+
+
+def scale_non_training_data(model_type, non_training_data):
+    features, labels = non_training_data
+    training_scaler = joblib.load('../data/training/training_data_scaler.sav')
+    return training_scaler.transform(features), labels
+
+
+
+def prepare_validation_test_data(model_type,non_training_data):
+    features, labels = non_training_data
+    encoded_features = onehotencode_features(features)
+    scalable_data = encoded_features, labels
+    training_scaler = joblib.load('../data/training/training_data_scaler.sav')
+    return optional_scale(model_type=model_type, scalable_data=scalable_data, prefit_scaler = training_scaler)
+
+
+
+def prepare_training_data(model_type, training_data):
     features, labels = training_data
     encoded_features = onehotencode_features(features)
     new_training_data = encoded_features, labels
-    final_training_data = optional_scale(model_type=model_type, training_data = new_training_data)
+    final_training_data = optional_scale(model_type=model_type, scalable_data = new_training_data)
     return final_training_data
 
 
@@ -102,7 +142,7 @@ def train_via_grid_search(model,distributions_to_search,iterations_desired, trai
 def train_all_models(model_dict, training_data):
     fitted_models = {}
     for model_type, model in model_dict.items():
-        prepped_training_data = prepare_data(model_type=model_type, training_data = training_data) #this encodes and scales the data if necessary
+        prepped_training_data = prepare_training_data(model_type=model_type, training_data = training_data) #this encodes and scales the data if necessary
 
         #train model with cross validation
         cross_validation_results = train_via_cross_validation(model,prepped_training_data)
@@ -126,9 +166,12 @@ def score_validate_model(fitted_model, validation_data):
 
 
 def rank_save_best_models(fitted_models, validation_data):
-    validation_scores = pd.DataFrame({key:score_validate_model(model,validation_data) for key,model in fitted_models.items()})
+    validation_scores = {}
+    for model_name, model in fitted_models.items():
+        prepped_validation_data = prepare_validation_test_data(model_name,validation_data)
+        validation_scores[model_name] =  score_validate_model(model,prepped_validation_data) 
 
-    validation_scores.to_pickle('../data/validation_model_scores.pkl')
+    pd.DataFrame(validation_scores).T.to_json('../results/validation_model_scores.json')
 
     
 
@@ -138,9 +181,11 @@ def rank_save_best_models(fitted_models, validation_data):
 def main():
     model_dict = initialize_models()
     training_data = load_data('training')
-    # validation_data = load_data('validation')
     trained_models = train_all_models(model_dict,training_data)
-    # rank_save_best_models(trained_models,validation_data)
+    
+    validation_data = load_data('validation')
+    
+    rank_save_best_models(trained_models,validation_data)
 
 
 
