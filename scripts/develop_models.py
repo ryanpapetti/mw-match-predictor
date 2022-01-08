@@ -51,7 +51,11 @@ def initialize_models():
 
 
 def onehotencode_features(features):
-    pass
+    nonencodable_features = features.drop(['map', 'mode'], axis=1)
+    encodable_features = features[['map','mode']]
+    encoded_features = pd.get_dummies(encodable_features).drop(['map', 'mode'], axis=1)
+    return pd.concat([nonencodable_features,encoded_features],axis=1)
+    
 
 
 
@@ -67,19 +71,29 @@ def optional_scale(model_type,training_data):
 
 
 
+def prepare_data(model_type, training_data):
+    features, labels = training_data
+    encoded_features = onehotencode_features(features)
+    new_training_data = encoded_features, labels
+    final_training_data = optional_scale(model_type=model_type, training_data = new_training_data)
+    return final_training_data
+
+
+
+
 def train_via_cross_validation(model, training_data):
-    cv_results = cross_validate(model, *training_data, scoring=f1_score) #default 5 fold validation
+    cv_results = cross_validate(model, *training_data, return_estimator=True) #default 5 fold validation
     return cv_results
 
 
 def select_best_model_from_cross_validation(cv_results):
     #get the estimator at the index of the max score in test score
-    return cv_results['estimator'][cv_results['test_score'].index(max(cv_results['test_score']))]
+    return cv_results['estimator'][cv_results['test_score'].argmax()]
 
 
 
 def train_via_grid_search(model,distributions_to_search,iterations_desired, training_data):
-    classifier = RandomizedSearchCV(model, distributions_to_search, scoring=f1_score,n_iter=iterations_desired, verbose=2)
+    classifier = RandomizedSearchCV(model, distributions_to_search,n_iter=iterations_desired, verbose=2)
     search_results = classifier.fit(*training_data)
     return search_results.best_estimator_
 
@@ -88,9 +102,10 @@ def train_via_grid_search(model,distributions_to_search,iterations_desired, trai
 def train_all_models(model_dict, training_data):
     fitted_models = {}
     for model_type, model in model_dict.items():
-        training_data = optional_scale(model_type=model_type, training_data = training_data)
+        prepped_training_data = prepare_data(model_type=model_type, training_data = training_data) #this encodes and scales the data if necessary
+
         #train model with cross validation
-        cross_validation_results = train_via_cross_validation(model,training_data)
+        cross_validation_results = train_via_cross_validation(model,prepped_training_data)
 
         #find best model
         best_model = select_best_model_from_cross_validation(cross_validation_results)
@@ -123,8 +138,8 @@ def rank_save_best_models(fitted_models, validation_data):
 def main():
     model_dict = initialize_models()
     training_data = load_data('training')
-    validation_data = load_data('validation')
-    # trained_models = train_all_models(model_dict,training_data)
+    # validation_data = load_data('validation')
+    trained_models = train_all_models(model_dict,training_data)
     # rank_save_best_models(trained_models,validation_data)
 
 

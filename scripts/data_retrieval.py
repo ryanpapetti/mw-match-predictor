@@ -43,7 +43,7 @@ def filter_relevant_data(retrieved_data):
     filtered_data = pd.DataFrame(new_data).T #this puts the match id as the index
     filtered_data.dropna(inplace=True)
     filtered_data = filtered_data[filtered_data['accuracy'] < 1.0] #get rid of "perfect accuracy" and no movement games
-    filtered_data = filtered_data[filtered_data['percentTimeMoving'] > 0.2]
+    filtered_data = filtered_data[filtered_data['percentTimeMoving'] > 20]
 
     #map must be in the hardcore shipment/shoot house options
 
