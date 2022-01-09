@@ -11,7 +11,7 @@ For demonstration, I will tune one model via standard trial and error (with CV) 
 
 #we will do SVM (SVC), Logistic Regression, Decision Tree, Random Forest, and ensembling them all!
 
-import pandas as pd
+import pandas as pd, numpy as np
 import joblib, random, os
 random.seed(420)
 
@@ -39,13 +39,80 @@ from data_exploration import load_data
 def initialize_models():
     model_dict = {'SVC':SVC(), 
     'LogisticRegression':LogisticRegression(),
-    'KNeighborsClassifier':KNeighborsClassifier(n_neighbors=7), #
-    'GaussianNB':GaussianNB(),
-    'DecisionTreeClassifier': DecisionTreeClassifier(max_depth = 7), #manually keeping some models smaller to avoid overfitting
+    'KNeighborsClassifier':KNeighborsClassifier(), #
+    'DecisionTreeClassifier': DecisionTreeClassifier(), #manually keeping some models smaller to avoid overfitting
     'GradientBoostingClassifier':GradientBoostingClassifier(),
-    'RandomForestClassifier':RandomForestClassifier(max_depth = 5)}
+    'RandomForestClassifier':RandomForestClassifier()}
 
     return model_dict
+
+
+
+
+
+def initialize_gridsearch_distributions():
+    parameter_distributions = {}
+
+    #RANDOM FOREST FIRST
+
+    # Number of trees in random forest
+    n_estimators = [int(x) for x in np.linspace(start = 100, stop = 2000, num = 20)]
+    # Number of features to consider at every split
+    max_features = ['auto', 'sqrt']
+    # Maximum number of levels in tree
+    max_depth = [int(x) for x in np.linspace(5, 110, num = 22)]
+    max_depth.append(None)
+    # Minimum number of samples required to split a node
+    min_samples_split = [2, 5, 10]
+    # Minimum number of samples required at each leaf node
+    min_samples_leaf = [1, 2, 4]
+    # Method of selecting samples for training each tree
+    bootstrap = [True, False]# Create the random grid
+    random_forest_params = {'n_estimators': n_estimators,
+                'max_features': max_features,
+                'max_depth': max_depth,
+                'min_samples_split': min_samples_split,
+                'min_samples_leaf': min_samples_leaf,
+                'bootstrap': bootstrap}
+
+    parameter_distributions['RandomForestClassifier'] = random_forest_params
+
+
+    #SVC 
+    parameter_distributions['SVC']  = {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+              'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
+              'kernel': ['rbf', 'linear', 'sigmoid']}
+
+
+
+
+    #logistic regression
+    parameter_distributions['LogisticRegression'] = {'penalty' : ['l1', 'l2'],
+    'C' : np.logspace(-4, 4, 20), 'solver' : ['liblinear']}
+
+
+
+
+    #knn
+    parameter_distributions['KNeighborsClassifier'] = {"n_neighbors":[int(x) for x in np.linspace(start = 3, stop = 61, num = 21)], "weights":['distance','uniform']}
+
+
+
+    #decision tree
+    parameter_distributions['DecisionTreeClassifier'] = {
+                'max_features': max_features,
+                'max_depth': max_depth,
+                'min_samples_split': min_samples_split,
+                'min_samples_leaf': min_samples_leaf}
+
+
+
+
+    #gradient boosting
+    parameter_distributions['GradientBoostingClassifier'] = {'loss':['deviance','exponential'], "n_estimators":n_estimators, 'max_depth': [int(x) for x in np.linspace(2, 40, num = 21)],'min_samples_split': min_samples_split}
+
+
+    return parameter_distributions
 
 
 
@@ -95,10 +162,10 @@ def scale_training_data(training_data):
 
 
 
-def scale_non_training_data(model_type, non_training_data):
-    features, labels = non_training_data
-    training_scaler = joblib.load('../data/training/training_data_scaler.sav')
-    return training_scaler.transform(features), labels
+# def scale_non_training_data(model_type, non_training_data):
+#     features, labels = non_training_data
+#     training_scaler = joblib.load('../data/training/training_data_scaler.sav')
+#     return training_scaler.transform(features), labels
 
 
 
@@ -157,10 +224,37 @@ def train_all_models(model_dict, training_data):
 
 
 
+
+
+
+
+
+
+def train_all_models_random_gridsearch(model_dict, gridsearch_params, training_data):
+    fitted_models = {}
+    for model_type, model in model_dict.items():
+        prepped_training_data = prepare_training_data(model_type=model_type, training_data = training_data) #this encodes and scales the data if necessary
+
+
+        #get the gridsearch params
+        proper_params = gridsearch_params[model_type]
+
+        #train model with grid search
+        iterations = 25
+        best_model = train_via_grid_search(model,proper_params, iterations, prepped_training_data)
+
+
+        #add model to new_dict
+        fitted_models[model_type] = best_model
+    return fitted_models
+
+
+
+
 def score_validate_model(fitted_model, validation_data):
     features, true_labels = validation_data
     predicted_labels = fitted_model.predict(features)
-    precision, recall, fscore = precision_recall_fscore_support(true_labels, predicted_labels)[:3]
+    precision, recall, fscore = precision_recall_fscore_support(true_labels, predicted_labels, average='binary')[:3]
     return dict(precision=precision, recall=recall, fscore=fscore)
 
 
@@ -180,8 +274,9 @@ def rank_save_best_models(fitted_models, validation_data):
 
 def main():
     model_dict = initialize_models()
+    distributions_for_search = initialize_gridsearch_distributions()
     training_data = load_data('training')
-    trained_models = train_all_models(model_dict,training_data)
+    trained_models = train_all_models_random_gridsearch(model_dict,distributions_for_search,training_data)
     
     validation_data = load_data('validation')
     
