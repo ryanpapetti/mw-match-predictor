@@ -7,6 +7,7 @@ this script downloads the user's match data from DynamoDb and sets it up for eve
 '''
 import boto3, pandas as pd, os, shutil
 from sklearn.model_selection import train_test_split
+from boto3.dynamodb.conditions import Attr
 
 
 
@@ -52,8 +53,8 @@ def filter_relevant_data(retrieved_data):
 
     filtered_data = filtered_data[filtered_data['map'].isin(["mp_shipment","mp_m_speed"])]
 
-    #get only hardcore modes
-    is_hardcore_mode = lambda mode: mode.endswith('_hc')
+    #get only hardcore tdm
+    is_hardcore_mode = lambda mode: mode.endswith('war_hc')
     filtered_data = filtered_data[filtered_data['mode'].apply(is_hardcore_mode)]
 
 
@@ -92,7 +93,8 @@ def main():
     desired_profile = 'ryanschool'
     desired_region = 'us-west-2'
     authenticated_session = authenticate_aws(desired_profile,desired_region)
-    scanned_data = retrieve_all_data_dynamo(authenticated_session, match_data_table='MWMatchData')
+    # special_dynamo_filtering = {'FilterExpression': Attr("isPresentatEnd").eq('true')}
+    scanned_data = retrieve_all_data_dynamo(authenticated_session, 'MWMatchData')
     filtered_data, match_results = filter_relevant_data(scanned_data)
     success_status = split_save_training_validation_test_data(filtered_data,match_results,training_size=0.6, validation_size=0.75)
     assert success_status
